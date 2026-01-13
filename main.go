@@ -155,7 +155,7 @@ func fetchAndSave(apiURL string) {
 		updatedAt, _ := time.Parse(time.RFC3339Nano, item.UpdatedAt)
 
 		_, err := db.Exec(`
-			INSERT INTO gold_prices 
+			INSERT INTO kur 
 			(market_product_id, updated_at, customer_buys_at, customer_sells_at)
 			VALUES ($1, $2, $3, $4)
 		`,
