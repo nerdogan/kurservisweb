@@ -29,9 +29,9 @@ type ApiResponse struct {
 }
 
 type ApiItem struct {
-	MarketProductId  int     `json:"marketProductId"`
-	UpdatedAt        string  `json:"updatedAt"`
-	CustomerBuysAt   float64 `json:"customerBuysAt"`
+	MarketProductId int     `json:"marketProductId"`
+	UpdatedAt       string  `json:"updatedAt"`
+	CustomerBuysAt  float64 `json:"customerBuysAt"`
 	CustomerSellsAt float64 `json:"customerSellsAt"`
 }
 
@@ -126,48 +126,49 @@ func startPriceFetcher() {
 	defer ticker.Stop()
 
 	for {
-		fetchAndSave()
+		fetchAndSave(apiURL)
 		<-ticker.C
 	}
 }
-
-func fetchAndSave() {
+func fetchAndSave(apiURL string) {
 	resp, err := http.Get(apiURL)
 	if err != nil {
-		log.Println("API hata:", err)
+		fmt.Println("API error:", err)
 		return
 	}
 	defer resp.Body.Close()
 
 	var apiResp ApiResponse
 	if err := json.NewDecoder(resp.Body).Decode(&apiResp); err != nil {
-		log.Println("JSON parse hata:", err)
+		fmt.Println("JSON decode error:", err)
 		return
 	}
 
-	tx, err := db.Begin()
-	if err != nil {
-		return
+	limit := 8
+	if len(apiResp.Data) < 8 {
+		limit = len(apiResp.Data)
 	}
 
-	stmt, _ := tx.Prepare(`
-		INSERT INTO kur 
-		(market_product_id, updated_at, customer_buys_at, customer_sells_at)
-		VALUES ($1,$2,$3,$4)
-	`)
-	defer stmt.Close()
+	for i := 0; i < limit; i++ {
+		item := apiResp.Data[i]
 
-	for _, item := range apiResp.Data {
-		stmt.Exec(
+		updatedAt, _ := time.Parse(time.RFC3339Nano, item.UpdatedAt)
+
+		_, err := db.Exec(`
+			INSERT INTO gold_prices 
+			(market_product_id, updated_at, customer_buys_at, customer_sells_at)
+			VALUES ($1, $2, $3, $4)
+		`,
 			item.MarketProductId,
-			item.UpdatedAt,
+			updatedAt,
 			item.CustomerBuysAt,
 			item.CustomerSellsAt,
 		)
-	}
 
-	tx.Commit()
-	log.Println("Kur güncellendi:", time.Now().Format("15:04:05"))
+		if err != nil {
+			fmt.Println("DB insert error:", err)
+		}
+	}
 }
 
 /* ================= HTML ================= */
@@ -214,7 +215,7 @@ createApp({
 
   const hesapla=async()=>{
    const r=await fetch(
-    \`/price?productId=\${productId.value}&gram=\${gram.value}&factor=\${ayar.value.factor}\`
+    "/price?productId=${productId.value}&gram=${gram.value}&factor=${ayar.value.factor}"
    )
    const d=await r.json()
    price.value=d.price
