@@ -265,23 +265,26 @@ createApp({
     const ayar = ref({label:'22K',factor:0.916});
 
     const products = [
-      {id:0,name:'Gram'},
-      {id:1,name:'Çeyrek'},
-      {id:2,name:'Yarım'},
-      {id:3,name:'Tam'}
+      {id:1,name:'AltınTL'},
+      {id:3,name:'AltınUSD'},
+      {id:4,name:'AltınEUR'},
+      {id:6,name:'GümüşTL'},
+      {id:7,name:'GümüşUSD'},
+      {id:8,name:'GümüşEUR'},
     ];
 
     const ayarlar = [
       {label:'14K',factor:0.585},
       {label:'18K',factor:0.750},
       {label:'21K',factor:0.875},
-      {label:'22K',factor:0.916}
+      {label:'22K',factor:0.916},
+      {label:'Silver',factor:0.925}
     ];
 
     const hesapla = async () => {
       if(gram.value<=0) return;
-   const r=await fetch(
-    "/price?productId=${productId.value}&gram=${gram.value}&factor=${ayar.value.factor}"
+      const r = await fetch(
+        '/price?productId=' + productId.value + '&gram=' + gram.value + '&factor=' + ayar.value.factor
       );
       const d = await r.json();
       price.value = d.price;
