@@ -104,10 +104,13 @@ func priceHandler(c *gin.Context) {
 /* ================= TABLE ================= */
 
 func createKurTable() {
+	// market_product tablosu oluştur
+	createMarketProductTable()
+
 	query := `
 	CREATE TABLE IF NOT EXISTS kur (
 		id SERIAL PRIMARY KEY,
-		market_product_id INT,
+		market_product_id INT REFERENCES market_product(id),
 		updated_at TIMESTAMP,
 		customer_buys_at NUMERIC(18,5),
 		customer_sells_at NUMERIC(18,5),
@@ -116,6 +119,19 @@ func createKurTable() {
 	_, err := db.Exec(query)
 	if err != nil {
 		log.Fatal("kur tablosu oluşturulamadı:", err)
+	}
+}
+
+func createMarketProductTable() {
+	query := `
+	CREATE TABLE IF NOT EXISTS market_product (
+		id SERIAL PRIMARY KEY,
+		name VARCHAR(255) NOT NULL,
+		created_at TIMESTAMP DEFAULT NOW()
+	);`
+	_, err := db.Exec(query)
+	if err != nil {
+		log.Fatal("market_product tablosu oluşturulamadı:", err)
 	}
 }
 
@@ -180,52 +196,102 @@ var htmlPage = `
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Altın Hesaplama</title>
+
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+
 <style>
-.btn{min-height:48px;font-size:16px}
+body { background:#f8f9fa; }
+.btn { min-height:48px; font-size:16px; }
 </style>
 </head>
-<body class="bg-light">
-<div id="app" class="container py-3"></div>
+
+<body>
+<div id="app" class="container py-3">
+
+  <div class="card shadow-sm">
+    <div class="card-body">
+
+      <h5 class="text-center mb-3">Altın Fiyat Hesaplama</h5>
+
+      <!-- ÜRÜN -->
+      <div class="mb-3">
+        <div class="btn-group w-100">
+          <button v-for="p in products"
+            class="btn"
+            :class="productId===p.id?'btn-primary':'btn-outline-primary'"
+            @click="productId=p.id">
+            {{p.name}}
+          </button>
+        </div>
+      </div>
+
+      <!-- GRAM -->
+      <div class="mb-3">
+        <input type="number" class="form-control form-control-lg"
+          v-model.number="gram" placeholder="Gram">
+      </div>
+
+      <!-- AYAR -->
+      <div class="mb-3">
+        <div class="btn-group w-100">
+          <button v-for="a in ayarlar"
+            class="btn"
+            :class="ayar.label===a.label?'btn-success':'btn-outline-success'"
+            @click="ayar=a">
+            {{a.label}}
+          </button>
+        </div>
+      </div>
+
+      <!-- SONUÇ -->
+      <div v-if="price" class="alert alert-success text-center fs-5">
+        {{price}} ₺
+      </div>
+
+    </div>
+  </div>
+</div>
 
 <script>
 const { createApp, ref, watch } = Vue;
 
 createApp({
- setup(){
-  const gram=ref(1)
-  const productId=ref(0)
-  const price=ref(null)
-  const ayar=ref({label:'22K',factor:0.916})
+  setup() {
+    const gram = ref(1);
+    const productId = ref(0);
+    const price = ref(null);
 
-  const products=[
-   {id:0,name:'Gram'},
-   {id:1,name:'Çeyrek'},
-   {id:2,name:'Yarım'},
-   {id:3,name:'Tam'}
-  ]
+    const ayar = ref({label:'22K',factor:0.916});
 
-  const ayarlar=[
-   {label:'14K',factor:0.585},
-   {label:'18K',factor:0.750},
-   {label:'21K',factor:0.875},
-   {label:'22K',factor:0.916}
-  ]
+    const products = [
+      {id:0,name:'Gram'},
+      {id:1,name:'Çeyrek'},
+      {id:2,name:'Yarım'},
+      {id:3,name:'Tam'}
+    ];
 
-  const hesapla=async()=>{
+    const ayarlar = [
+      {label:'14K',factor:0.585},
+      {label:'18K',factor:0.750},
+      {label:'21K',factor:0.875},
+      {label:'22K',factor:0.916}
+    ];
+
+    const hesapla = async () => {
+      if(gram.value<=0) return;
    const r=await fetch(
     "/price?productId=${productId.value}&gram=${gram.value}&factor=${ayar.value.factor}"
-   )
-   const d=await r.json()
-   price.value=d.price
+      );
+      const d = await r.json();
+      price.value = d.price;
+    };
+
+    watch([gram, productId, ayar], hesapla, {deep:true});
+
+    return { gram, productId, ayar, products, ayarlar, price };
   }
-
-  watch([gram,productId,ayar],hesapla,{deep:true})
-
-  return{gram,productId,price,ayar,products,ayarlar}
- }
-}).mount("#app")
+}).mount("#app");
 </script>
 </body>
 </html>
