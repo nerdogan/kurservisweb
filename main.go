@@ -138,7 +138,7 @@ func createMarketProductTable() {
 /* ================= FETCHER ================= */
 
 func startPriceFetcher() {
-	ticker := time.NewTicker(15 * time.Second)
+	ticker := time.NewTicker(60 * time.Second)
 	defer ticker.Stop()
 
 	for {
@@ -167,8 +167,9 @@ func fetchAndSave(apiURL string) {
 
 	for i := 0; i < limit; i++ {
 		item := apiResp.Data[i]
+		layout := "2006-01-02T15:04:05.999999"
 
-		updatedAt, _ := time.Parse(time.RFC3339Nano, item.UpdatedAt)
+		updatedAt, _ := time.Parse(layout, item.UpdatedAt)
 
 		_, err := db.Exec(`
 			INSERT INTO kur 
@@ -195,7 +196,7 @@ var htmlPage = `
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Altın Hesaplama</title>
+<title>Altın & Gümüş Hesaplama</title>
 
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
@@ -214,39 +215,70 @@ body { background:#f8f9fa; }
 
       <h5 class="text-center mb-3">Altın Fiyat Hesaplama</h5>
 
-      <!-- ÜRÜN -->
       <div class="mb-3">
         <div class="btn-group w-100">
-          <button v-for="p in products"
+          <button v-for="p in goldProducts"
             class="btn"
-            :class="productId===p.id?'btn-primary':'btn-outline-primary'"
-            @click="productId=p.id">
-            {{p.name}}
+            :class="goldProductId === p.id ? 'btn-primary' : 'btn-outline-primary'"
+            @click="goldProductId = p.id">
+            {{ p.name }}
           </button>
         </div>
       </div>
 
-      <!-- GRAM -->
       <div class="mb-3">
         <input type="number" class="form-control form-control-lg"
-          v-model.number="gram" placeholder="Gram">
+          v-model.number="goldGram" placeholder="Gram">
       </div>
 
-      <!-- AYAR -->
       <div class="mb-3">
         <div class="btn-group w-100">
-          <button v-for="a in ayarlar"
+          <button v-for="a in goldAyarlar"
             class="btn"
-            :class="ayar.label===a.label?'btn-success':'btn-outline-success'"
-            @click="ayar=a">
-            {{a.label}}
+            :class="goldAyar.label === a.label ? 'btn-success' : 'btn-outline-success'"
+            @click="goldAyar = a">
+            {{ a.label }}
           </button>
         </div>
       </div>
 
-      <!-- SONUÇ -->
-      <div v-if="price" class="alert alert-success text-center fs-5">
-        {{price}} ₺
+      <div v-if="goldPrice" class="alert alert-success text-center fs-5">
+        {{ goldPrice }}
+      </div>
+
+      <hr>
+
+      <h5 class="text-center mb-3">Gümüş Fiyat Hesaplama</h5>
+
+      <div class="mb-3">
+        <div class="btn-group w-100">
+          <button v-for="p in silverProducts"
+            class="btn"
+            :class="silverProductId === p.id ? 'btn-primary' : 'btn-outline-primary'"
+            @click="silverProductId = p.id">
+            {{ p.name }}
+          </button>
+        </div>
+      </div>
+
+      <div class="mb-3">
+        <input type="number" class="form-control form-control-lg"
+          v-model.number="silverGram" placeholder="Gram">
+      </div>
+
+      <div class="mb-3">
+        <div class="btn-group w-100">
+          <button v-for="a in silverAyarlar"
+            class="btn"
+            :class="silverAyar.label === a.label ? 'btn-success' : 'btn-outline-success'"
+            @click="silverAyar = a">
+            {{ a.label }}
+          </button>
+        </div>
+      </div>
+
+      <div v-if="silverPrice" class="alert alert-success text-center fs-5">
+        {{ silverPrice }}
       </div>
 
     </div>
@@ -258,44 +290,70 @@ const { createApp, ref, watch } = Vue;
 
 createApp({
   setup() {
-    const gram = ref(1);
-    const productId = ref(0);
-    const price = ref(null);
 
-    const ayar = ref({label:'22K',factor:0.916});
+    const goldGram = ref(1);
+    const goldProductId = ref(1);
+    const goldAyar = ref({ label: '14K', factor: 0.585 });
+    const goldPrice = ref(null);
 
-    const products = [
-      {id:1,name:'AltınTL'},
-      {id:3,name:'AltınUSD'},
-      {id:4,name:'AltınEUR'},
-      {id:6,name:'GümüşTL'},
-      {id:7,name:'GümüşUSD'},
-      {id:8,name:'GümüşEUR'},
+    const silverGram = ref(1);
+    const silverProductId = ref(6);
+    const silverAyar = ref({ label: '935', factor: 0.935 });
+    const silverPrice = ref(null);
+
+    const goldProducts = [
+      { id: 1, name: 'Altın TL' },
+      { id: 3, name: 'Altın USD' },
+      { id: 4, name: 'Altın EUR' }
     ];
 
-    const ayarlar = [
-      {label:'14K',factor:0.585},
-      {label:'18K',factor:0.750},
-      {label:'21K',factor:0.875},
-      {label:'22K',factor:0.916},
-      {label:'Silver',factor:0.925}
+    const silverProducts = [
+      { id: 6, name: 'Gümüş TL' },
+      { id: 7, name: 'Gümüş USD' },
+      { id: 8, name: 'Gümüş EUR' }
     ];
 
-    const hesapla = async () => {
-      if(gram.value<=0) return;
+    const goldAyarlar = [
+      { label: '14K', factor: 0.585 },
+      { label: '18K', factor: 0.750 },
+      { label: '21K', factor: 0.875 },
+      { label: '22K', factor: 0.916 }
+    ];
+
+    const silverAyarlar = [
+      { label: '935', factor: 0.935 },
+      { label: '1000', factor: 1.0 }
+    ];
+
+    const hesapla = async function(productId, gram, factor, target) {
+      if (gram <= 0) return;
       const r = await fetch(
-        '/price?productId=' + productId.value + '&gram=' + gram.value + '&factor=' + ayar.value.factor
+        "/price?productId=" + productId +
+        "&gram=" + gram +
+        "&factor=" + factor
       );
       const d = await r.json();
-      price.value = d.price;
+      target.value = d.price;
     };
 
-    watch([gram, productId, ayar], hesapla, {deep:true});
+    watch([goldGram, goldProductId, goldAyar], function() {
+      hesapla(goldProductId.value, goldGram.value, goldAyar.value.factor, goldPrice);
+    }, { deep: true });
 
-    return { gram, productId, ayar, products, ayarlar, price };
+    watch([silverGram, silverProductId, silverAyar], function() {
+      hesapla(silverProductId.value, silverGram.value, silverAyar.value.factor, silverPrice);
+    }, { deep: true });
+
+    return {
+      goldGram, goldProductId, goldAyar, goldPrice,
+      silverGram, silverProductId, silverAyar, silverPrice,
+      goldProducts, goldAyarlar,
+      silverProducts, silverAyarlar
+    };
   }
 }).mount("#app");
 </script>
+
 </body>
 </html>
 `
