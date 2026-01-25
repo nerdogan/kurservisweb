@@ -147,16 +147,25 @@ func startPriceFetcher() {
 	}
 }
 func fetchAndSave(apiURL string) {
-	resp, err := http.Get(apiURL)
+	client := &http.Client{
+		Timeout: 10 * time.Second,
+	}
+
+	resp, err := client.Get(apiURL)
 	if err != nil {
-		fmt.Println("API error:", err)
+		log.Println("API error:", err)
 		return
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode != http.StatusOK {
+		log.Println("API status error:", resp.Status)
+		return
+	}
+
 	var apiResp ApiResponse
 	if err := json.NewDecoder(resp.Body).Decode(&apiResp); err != nil {
-		fmt.Println("JSON decode error:", err)
+		log.Println("JSON decode error:", err)
 		return
 	}
 
@@ -165,13 +174,18 @@ func fetchAndSave(apiURL string) {
 		limit = len(apiResp.Data)
 	}
 
+	layout := "2006-01-02T15:04:05.999999"
+
 	for i := 0; i < limit; i++ {
 		item := apiResp.Data[i]
-		layout := "2006-01-02T15:04:05.999999"
 
-		updatedAt, _ := time.Parse(layout, item.UpdatedAt)
+		updatedAt, err := time.Parse(layout, item.UpdatedAt)
+		if err != nil {
+			log.Println("Time parse error:", err)
+			continue
+		}
 
-		_, err := db.Exec(`
+		_, err = db.Exec(`
 			INSERT INTO kur 
 			(market_product_id, updated_at, customer_buys_at, customer_sells_at)
 			VALUES ($1, $2, $3, $4)
@@ -183,7 +197,7 @@ func fetchAndSave(apiURL string) {
 		)
 
 		if err != nil {
-			fmt.Println("DB insert error:", err)
+			log.Println("DB insert error:", err)
 		}
 	}
 }
