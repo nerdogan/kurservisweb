@@ -1,9 +1,9 @@
-# 💰 Gold Price Service (Go + Gin + PostgreSQL)
+# 💰 Altın Kur Servisi (Go + Gin + PostgreSQL + Vue 3)
 
 Tek bir **Go binary** içinde çalışan,  
-- 📡 Dış API’den **15 saniyede bir** kur verisi çeken  
-- 🗄️ PostgreSQL’e otomatik kaydeden  
-- 📱 **Mobil-first** web arayüzü sunan  
+- 📡 Dış API'den **15 saniyede bir** kur verisi çeken  
+- 🗄️ PostgreSQL'e otomatik kaydeden  
+- 📱 **Mobil-uyumlu** modern web arayüzü sunan  
 - 🧮 Satış fiyatına göre altın hesaplayan  
 
 tam entegre bir uygulama.
@@ -12,31 +12,51 @@ tam entegre bir uygulama.
 
 ## 🚀 Özellikler
 
-- ✅ Tek `main.go` dosyası
-- ✅ Go + Gin
-- ✅ PostgreSQL
-- ✅ Vue 3 (CDN) + Bootstrap 5
-- ✅ Mobil-first UI
+- ✅ Backend: Tek `main.go` dosyası (Go + Gin)
+- ✅ Frontend: Vue 3 + Vite + Vue Router
+- ✅ Veritabanı: PostgreSQL
+- ✅ UI: Bootstrap 5 + Responsive tasarım
+- ✅ Mobil-uyumlu arayüz
 - ✅ `.env` ile yapılandırma
-- ✅ Dış API’den otomatik kur çekme
+- ✅ Dış API'den otomatik kur çekme (15 saniye aralığı)
 - ✅ Tablo yoksa otomatik oluşturma
 - ✅ Satış fiyatı (`customerSellsAt`) bazlı hesaplama
+- ✅ Pinia ile state management
+- ✅ Axios ile API iletişimi
 
 ---
 
-## 🧱 Mimari
+## 🧱 Proje Yapısı
 
-main.go
-├─ Gin Web Server
-│ ├─ / → Mobil UI (Vue + Bootstrap)
-│ └─ /price → Fiyat API
-│
-├─ Kur Fetcher (15 sn)
-│ └─ External API
-│
-└─ PostgreSQL
-└─ kur tablosu
+```
+kurservisweb/
+├─ main.go                    # Go backend
+├─ frontend/                  # Vue 3 + Vite uygulaması
+│  ├─ src/
+│  │  ├─ components/          # Vue bileşenleri
+│  │  ├─ views/              # Sayfa bileşenleri
+│  │  │  ├─ HomeView.vue     # USD fiyatları
+│  │  │  ├─ HomeVieweur.vue  # EUR fiyatları
+│  │  │  ├─ HomeViewtl.vue   # TL fiyatları
+│  │  │  └─ HomeViewhas.vue  # HAS fiyatları
+│  │  ├─ router/             # Vue Router yapılandırması
+│  │  ├─ assets/             # CSS ve statik dosyalar
+│  │  ├─ App.vue             # Root bileşen
+│  │  └─ main.js             # Entry point
+│  ├─ package.json
+│  ├─ vite.config.js
+│  └─ dist/                  # Build çıktısı
+├─ templates/                # Backend HTML şablonları
+└─ .env                      # Ortam değişkenleri
+```
 
+### Backend Mimarisi (main.go)
+- **Gin Web Server**: API ve frontend servisi
+- **Kur Fetcher**: 15 saniye aralığıyla dış API'yi sorgulama
+- **PostgreSQL**: Altın kur verilerini depolama
+- **API Routes**:
+  - `GET /` → Frontend (Vue uygulaması)
+  - `GET /api/prices` → Güncel kur bilgisi
 
 ---
 
@@ -45,39 +65,78 @@ main.go
 ### 1️⃣ Gereksinimler
 
 - Go 1.20+
+- Node.js 16+ (Frontend için)
 - PostgreSQL
 - Git
-
----
 
 ### 2️⃣ Projeyi Klonla
 
 ```bash
-git clone https://github.com/kullanici/gold-price-service.git
-cd gold-price-service
+git clone <repo-url>
+cd kurservisweb
+```
 
-3️⃣ .env Dosyası Oluştur
-API_URL=https://api.ornek.com/prices
+### 3️⃣ .env Dosyası Oluştur
+
+Backend kök dizinde `.env` dosyası oluşturun:
+
+```env
+API_URL=https://api.example.com/prices
 DB_DSN=host=localhost user=postgres password=postgres dbname=gold sslmode=disable
+PORT=8080
+```
 
-4️⃣ Bağımlılıkları Yükle
-go mod init gold-price-service
-go get github.com/gin-gonic/gin
-go get github.com/lib/pq
-go get github.com/joho/godotenv
+### 4️⃣ Backend Bağımlılıklarını Yükle
 
-5️⃣ Çalıştır
+```bash
+go mod download
+```
+
+### 5️⃣ Frontend Bağımlılıklarını Yükle
+
+```bash
+cd frontend
+npm install
+cd ..
+```
+
+### 6️⃣ Uygulamayı Çalıştır
+
+**Seçenek A: Geliştirme Modu (Vite dev server)**
+
+```bash
+# Terminal 1: Backend
 go run main.go
 
+# Terminal 2: Frontend dev server
+cd frontend
+npm run dev
+```
 
-Tarayıcıdan aç:
+- Backend: `http://localhost:8080`
+- Frontend: `http://localhost:5173` (Vite dev server)
 
-http://localhost:8080
+**Seçenek B: Production Build**
 
-📊 PostgreSQL Tablosu
+```bash
+# Frontend'i build et
+cd frontend
+npm run build
+cd ..
+
+# Backend'i çalıştır (frontend dist/ klasörü otomatik serve edilir)
+go run main.go
+```
+
+Tarayıcıdan aç: `http://localhost:8080`
+
+---
+
+## 📊 PostgreSQL Tablosu
 
 Uygulama otomatik olarak aşağıdaki tabloyu oluşturur:
 
+```sql
 CREATE TABLE kur (
     id SERIAL PRIMARY KEY,
     market_product_id INT,
@@ -86,66 +145,88 @@ CREATE TABLE kur (
     customer_sells_at NUMERIC(18,5),
     created_at TIMESTAMP DEFAULT NOW()
 );
+```
 
-🔁 Kur Çekme Mekanizması
+---
 
-⏱️ Her 15 saniyede bir
+## 🔁 Kur Çekme Mekanizması
 
-🌐 .env içindeki API_URL adresine istek atar
+- ⏱️ **Aralık**: Her 15 saniyede bir
+- 🌐 **API**: `.env` içindeki `API_URL` adresine istek gönderilir
+- 📥 **JSON Alanları**: 
+  - `marketProductId`
+  - `updatedAt`
+  - `customerBuysAt`
+  - `customerSellsAt`
+- 💾 **Depolama**: PostgreSQL kur tablosuna kaydedilir
 
-📥 JSON içinden şu alanları alır:
+---
 
-marketProductId
+## 🖥️ Frontend Sayfaları
 
-updatedAt
+| Rota | Açıklama |
+|------|----------|
+| `/` | USD cinsinden altın fiyatları |
+| `/eur` | EUR cinsinden altın fiyatları |
+| `/tl` | TL cinsinden altın fiyatları |
+| `/has` | HAS cinsinden altın fiyatları |
 
-customerBuysAt
+---
 
-customerSellsAt
+## 🛠️ Geliştirme
 
-💾 PostgreSQL kur tablosuna kaydeder
+### Frontend Geliştirme Sunucusu
 
-🧮 Fiyat Hesaplama Mantığı
-Fiyat = Gram × customerSellsAt × Ayar Katsayısı
+```bash
+cd frontend
+npm run dev
+```
 
-Ayar Katsayıları
-Ayar	Katsayı
-14K	0.585
-18K	0.750
-21K	0.875
-22K	0.916
-📱 Mobil UI Özellikleri
+### Frontend Build
 
-Büyük dokunmatik butonlar
+```bash
+cd frontend
+npm run build
+```
 
-Ürün seçimi (Gram, Çeyrek, Yarım, Tam)
+Output: `frontend/dist/`
 
-Ayar seçimi (14K – 22K)
+### Frontend Preview
 
-Otomatik hesaplama
+```bash
+cd frontend
+npm run preview
+```
 
-Tek kolon, mobil-first tasarım
+---
 
-🛠️ API Endpoint
-GET /price
+## 📦 Kullanılan Kütüphaneler
 
-Query Params
+### Backend (Go)
+- **Gin**: Web framework
+- **lib/pq**: PostgreSQL driver
+- **godotenv**: .env dosyası yönetimi
 
-Param	Açıklama
-productId	Ürün ID
-gram	Gram
-factor	Ayar katsayısı
+### Frontend (Vue 3)
+- **Vue 3**: Progressive JavaScript framework
+- **Vue Router**: Client-side routing
+- **Pinia**: State management
+- **Bootstrap 5**: CSS framework
+- **Axios**: HTTP client
+- **Vite**: Build tool ve dev server
 
-Response
+---
 
-{
-  "price": "12345.67"
-}
+## 📱 Mobil Uyumluluk
 
-🔒 Hata Yönetimi
+- ✅ Responsive tasarım
+- ✅ Meta viewport yapılandırma
+- ✅ Bootstrap 5 grid sistemi
+- ✅ Touch-friendly arayüz
+- ✅ Dark mode desteği
 
-Dış API down olsa bile server çalışmaya devam eder
+---
 
-DB hataları loglanır
+## 👨‍💻 Geliştirici
 
-UI çökmeyecek şekilde tasarlanmıştır
+Namık ERDOĞAN - 2024
