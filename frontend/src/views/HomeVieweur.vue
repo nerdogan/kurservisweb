@@ -94,7 +94,7 @@ input[type=text]:focus {
 
   {{ tarih }}
   <p>
-  Namık ERDOĞAN © 2024
+  Namık ERDOĞAN © 2024 - 2026
 </p>
 </p>
 
@@ -124,10 +124,10 @@ export default defineComponent({
     }
   },
   mounted() {
-    axios.get<Item[]>('https://nenfuar.duckdns.org/fuar.php?masa=EUR')
+    axios.get<Item[]>('/price?productId=4')
       .then(response => {
         this.items = response.data
-        this.usd= (response.data[0].tutar)*1
+        this.usd= ((response.data[0].tutar)*1).toFixed(2)
         this.tarih=response.data[0].tarih
 
       })

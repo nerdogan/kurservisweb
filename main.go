@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"log"
-	"math"
 	"net/http"
 	"os"
 	"strconv"
@@ -58,6 +57,8 @@ func main() {
 
 	// 15 saniyede bir kur çek (goroutine)
 	go startPriceFetcher()
+
+	//gin.SetMode(gin.ReleaseMode)
 
 	// GIN
 	r := gin.Default()
@@ -114,16 +115,9 @@ func priceHandler(c *gin.Context) {
 		return
 	}
 
-	if productID == 3 || productID == 4 {
-		sellPrice = sellPrice / 1000 // usd ve eur için gram fiyatı
-	}
-
-	//price := gram * sellPrice * factor
-	price := math.Round(sellPrice*100) / 100 // 2 ondalık basamak
-
 	c.JSON(200, []gin.H{
 		{
-			"tutar":  price,
+			"tutar":  sellPrice,
 			"tarih":  updatedAt.Format("2006-01-02 15:04:05"),
 			"masano": strconv.Itoa(productID),
 		},
